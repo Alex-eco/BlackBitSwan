@@ -1,13 +1,21 @@
+// ================== Fetch market mood ==================
 const moodElement = document.getElementById('mood-value');
 
 async function fetchMood() {
   try {
     const response = await fetch('https://blackbitswan.onrender.com/mood');
     if (!response.ok) throw new Error('Failed to fetch mood');
-    const data = await response.json();
 
-    const moodValue = parseInt(data.mood, 10);
-    moodElement.textContent = isNaN(moodValue) ? '--%' : `${moodValue}%`;
+    const html = await response.text();
+    // Ищем первое число с % в ответе
+    const match = html.match(/(\d+)\s*%/);
+
+    if (match) {
+      moodElement.textContent = `${match[1]}%`;
+    } else {
+      console.warn('⚠️ Mood value not found in HTML');
+      moodElement.textContent = '--%';
+    }
   } catch (error) {
     console.error('❌ Error fetching market mood:', error);
     moodElement.textContent = '--%';
@@ -46,10 +54,7 @@ async function fetchPrices() {
 }
 
 // ================== Init ==================
-fetchMood();
 fetchPrices();
-
-// Обновление каждые 5 минут
-setInterval(fetchMood, 5 * 60 * 1000);
 setInterval(fetchPrices, 5 * 60 * 1000);
+
 
