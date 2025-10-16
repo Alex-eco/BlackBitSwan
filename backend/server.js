@@ -1,6 +1,6 @@
 import express from 'express';
 import fetch from 'node-fetch';
-import cheerio from 'cheerio';
+import * as cheerio from "cheerio";   // правильный импорт для ESM
 import cors from 'cors';
 import OpenAI from 'openai';
 import path from 'path';
