@@ -1,45 +1,50 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>BlackBitSwan — AI Crypto Mood</title>
-<link rel="stylesheet" href="styles.css" />
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BlackBitSwan — AI Crypto Insights</title>
+  <link rel="stylesheet" href="styles.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
 </head>
 <body>
-<header class="site-header">
-  <div class="container">
+  <header>
+    <img src="assets/logo.svg" alt="BlackBitSwan Logo" class="logo" />
     <h1>BlackBitSwan</h1>
-    <p class="subtitle">AI-driven platform that scans global news and investor chats in real time to predict crypto shifts — fast, data-backed emotional forecasts and actionable insights.</p>
-  </div>
-</header>
-<main class="container">
-  <section class="prices card">
-    <h2>Top 5 cryptocurrencies</h2>
-    <div id="prices" class="prices-grid">Loading prices...</div>
+    <p>AI-driven platform predicting crypto market mood in real time 🧠📊</p>
+  </header>
+
+  <section class="market-section">
+    <h2>Top 5 Cryptocurrencies</h2>
+    <div id="crypto-prices" class="crypto-grid"></div>
   </section>
-  <section class="mood card">
-    <h2>Crypto Market Mood</h2>
-    <div class="gauge" id="moodGauge">
-      <div class="gauge-fill" id="gaugeFill" style="width:50%"></div>
-      <div class="gauge-caption"><span id="moodPercent">50</span>%</div>
+
+  <section class="mood-section">
+    <h2>🪙 Market Mood</h2>
+    <div class="mood-circle">
+      <span id="mood-value">--%</span>
     </div>
-    <p id="moodInfo">Last updated: <span id="moodTime">-</span></p>
-    <div id="headlines" class="headlines"></div>
+    <p class="mood-desc">Updated every 5 minutes based on global crypto news.</p>
   </section>
-  <section class="mission card">
+
+  <section class="mission-section">
     <h2>Our Mission</h2>
-    <p>Explore real-time global risk for financing platforms that sense risks due to climate change, geopolitical events, and cyber and market shocks, thereby allowing the bank to deploy tailored capital or hedging before crises unfold. We offer BlackBitSwan solutions that help investors and institutions anticipate and adapt to extreme volatility by applying data and tools that deliver real-time global risk insights, dynamic scenario modeling, and adaptive financial strategies to protect portfolios and operations.</p>
+    <p>
+      Explore real-time global risk for financing platforms that sense risks due to climate change, geopolitical events, and cyber and market shocks.
+      BlackBitSwan helps investors and institutions anticipate and adapt to extreme volatility with real-time risk insights and adaptive strategies.
+    </p>
   </section>
-  <section class="contact card">
+
+  <section class="contact-section">
     <h2>Contact Us</h2>
-    <p>Email: <a href="mailto:rstyleh@gmail.com">rstyleh@gmail.com</a></p>
-    <p>Telegram: <a href="https://t.me/blackbitswan" target="_blank">@blackbitswan</a></p>
+    <p>📧 <a href="mailto:rstyleh@gmail.com">rstyleh@gmail.com</a></p>
+    <p>📨 Telegram: <a href="https://t.me/blackbitswan" target="_blank">@blackbitswan</a></p>
   </section>
-</main>
-<footer class="site-footer">
-  <div class="container">© 2025 BlackBitSwan</div>
-</footer>
-<script src="app.js"></script>
+
+  <footer>
+    <p>© 2025 BlackBitSwan. All rights reserved.</p>
+  </footer>
+
+  <script src="app.js"></script>
 </body>
 </html>
