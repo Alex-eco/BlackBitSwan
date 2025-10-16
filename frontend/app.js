@@ -1,15 +1,20 @@
-const API_URL = "https://blackbitswan.onrender.com/api";
+const moodElement = document.getElementById('market-mood');
 
-// ================== Fetch crypto mood ==================
 async function fetchMood() {
   try {
-    const res = await fetch(`${API_URL}/mood`);
-    const data = await res.json();
-    document.getElementById("mood-value").textContent = `${data.mood}%`;
-  } catch (err) {
-    console.error("Failed to fetch mood:", err);
+    const response = await fetch('https://blackbitswan.onrender.com/mood');
+    if (!response.ok) throw new Error('Failed to fetch mood');
+    const data = await response.json();
+    moodElement.textContent = `${data.mood}%`;
+  } catch (error) {
+    console.error('Error fetching market mood:', error);
+    moodElement.textContent = '--%';
   }
 }
+
+fetchMood();
+setInterval(fetchMood, 5 * 60 * 1000);
+
 
 // ================== Fetch crypto prices ==================
 async function fetchPrices() {
