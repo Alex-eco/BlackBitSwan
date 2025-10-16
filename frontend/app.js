@@ -1,4 +1,4 @@
-// ================== Fetch market mood ==================
+// ================== Fetch market mood via search ==================
 const moodElement = document.getElementById('mood-value');
 
 async function fetchMood() {
