@@ -1,5 +1,5 @@
 // ================== Fetch market mood ==================
-const moodElement = document.getElementById('market-mood');
+const moodElement = document.getElementById('mood-value');
 
 async function fetchMood() {
   try {
@@ -10,13 +10,13 @@ async function fetchMood() {
     // Проверка и отображение mood
     const moodValue = parseInt(data.mood, 10);
     if (!isNaN(moodValue)) {
-     moodElement.textContent = `35%`; // moodElement.textContent = `${moodValue}%`;
+      moodElement.textContent = `${moodValue}%`;
     } else {
-      moodElement.textContent = '35%';
+      moodElement.textContent = '--%';
     }
   } catch (error) {
     console.error('❌ Error fetching market mood:', error);
-    moodElement.textContent = '35%';
+    moodElement.textContent = '--%';
   }
 }
 
@@ -54,3 +54,4 @@ fetchPrices();
 // Обновление каждые 5 минут
 setInterval(fetchMood, 5 * 60 * 1000);
 setInterval(fetchPrices, 5 * 60 * 1000);
+
