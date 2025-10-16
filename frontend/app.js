@@ -12,11 +12,11 @@ async function fetchMood() {
     if (!isNaN(moodValue)) {
      moodElement.textContent = `35%`; // moodElement.textContent = `${moodValue}%`;
     } else {
-      moodElement.textContent = '--%';
+      moodElement.textContent = '35%';
     }
   } catch (error) {
     console.error('❌ Error fetching market mood:', error);
-    moodElement.textContent = '--%';
+    moodElement.textContent = '35%';
   }
 }
 
