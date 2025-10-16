@@ -1,4 +1,3 @@
-// ================== Fetch market mood ==================
 const moodElement = document.getElementById('mood-value');
 
 async function fetchMood() {
@@ -7,18 +6,17 @@ async function fetchMood() {
     if (!response.ok) throw new Error('Failed to fetch mood');
     const data = await response.json();
 
-    // Проверка и отображение mood
     const moodValue = parseInt(data.mood, 10);
-    if (!isNaN(moodValue)) {
-      moodElement.textContent = `${moodValue}%`;
-    } else {
-      moodElement.textContent = '--%';
-    }
+    moodElement.textContent = isNaN(moodValue) ? '--%' : `${moodValue}%`;
   } catch (error) {
     console.error('❌ Error fetching market mood:', error);
     moodElement.textContent = '--%';
   }
 }
+
+fetchMood();
+setInterval(fetchMood, 5 * 60 * 1000);
+
 
 // ================== Fetch crypto prices ==================
 async function fetchPrices() {
