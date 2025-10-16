@@ -1,4 +1,4 @@
-// ================== Fetch market mood via search ==================
+// ================== Fetch market mood ==================
 const moodElement = document.getElementById('mood-value');
 
 async function fetchMood() {
@@ -7,11 +7,13 @@ async function fetchMood() {
     if (!response.ok) throw new Error('Failed to fetch mood');
 
     const html = await response.text();
-    // Ищем первое число с % в ответе
-    const match = html.match(/(\d+)\s*%/);
+    // Находим все вхождения процентов
+    const matches = [...html.matchAll(/(\d+)\s*%/g)].map(m => parseInt(m[1], 10));
 
-    if (match) {
-      moodElement.textContent = `${match[1]}%`;
+    if (matches.length > 0) {
+      // Берем последнее найденное значение (скорее всего текущее)
+      const moodValue = matches[matches.length - 1];
+      moodElement.textContent = `${moodValue}%`;
     } else {
       console.warn('⚠️ Mood value not found in HTML');
       moodElement.textContent = '--%';
@@ -56,5 +58,6 @@ async function fetchPrices() {
 // ================== Init ==================
 fetchPrices();
 setInterval(fetchPrices, 5 * 60 * 1000);
+
 
 
