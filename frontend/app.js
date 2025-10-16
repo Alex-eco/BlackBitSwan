@@ -10,7 +10,7 @@ async function fetchMood() {
     // Проверка и отображение mood
     const moodValue = parseInt(data.mood, 10);
     if (!isNaN(moodValue)) {
-      moodElement.textContent = `${moodValue}%`;
+     moodElement.textContent = `35%`; // moodElement.textContent = `${moodValue}%`;
     } else {
       moodElement.textContent = '--%';
     }
