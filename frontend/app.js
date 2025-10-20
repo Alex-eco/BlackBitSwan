@@ -1,3 +1,4 @@
+
 // ================== Fetch market mood ==================
 const moodElement = document.getElementById('mood-value');
 
@@ -10,7 +11,7 @@ async function fetchMood() {
     const matches = [...html.matchAll(/(\d+)\s*%/g)].map(m => parseInt(m[1], 10));
 
     if (matches.length > 0) {
-      // Берём последнее найденное значение
+      // Берём последнее найденное значение процента
       const moodValue = matches[matches.length - 1];
       moodElement.textContent = `${moodValue}%`;
     } else {
@@ -51,10 +52,9 @@ async function fetchPrices() {
 }
 
 // ================== Init ==================
-// задержка 15 секунд перед первым fetchMood
-setTimeout(fetchMood, 15000);
+fetchMood();       // теперь запускается сразу
 fetchPrices();
 
-// обновление каждые 5 минут
-setInterval(fetchMood, 5 * 60 * 1000);
+setInterval(fetchMood, 5 * 60 * 1000);     // обновление каждые 5 мин
 setInterval(fetchPrices, 5 * 60 * 1000);
+
