@@ -4,7 +4,7 @@ const moodElement = document.getElementById('mood-value');
 
 async function fetchMood() {
   try {
-    const response = await fetch('https://blackbitswan.onrender.com/mood');
+    const response = await fetch('https://blackbitswan.onrender.com/api/mood');
     if (!response.ok) throw new Error('Failed to fetch mood');
 
     const html = await response.text();
