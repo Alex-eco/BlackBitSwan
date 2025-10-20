@@ -1,21 +1,21 @@
+// ================== API base URL ==================
+const API_BASE = 'https://blackbitswan.onrender.com';
 
 // ================== Fetch market mood ==================
 const moodElement = document.getElementById('mood-value');
 
 async function fetchMood() {
   try {
-    const response = await fetch('https://blackbitswan.onrender.com/api/mood');
+    const response = await fetch(`${API_BASE}/api/mood`);
     if (!response.ok) throw new Error('Failed to fetch mood');
 
-    const html = await response.text();
-    const matches = [...html.matchAll(/(\d+)\s*%/g)].map(m => parseInt(m[1], 10));
+    const data = await response.json();
 
-    if (matches.length > 0) {
-      // Берём последнее найденное значение процента
-      const moodValue = matches[matches.length - 1];
-      moodElement.textContent = `${moodValue}%`;
+    // mood_percent приходит с бэкенда
+    if (data && typeof data.mood_percent === 'number') {
+      moodElement.textContent = `${data.mood_percent}%`;
     } else {
-      console.warn('⚠️ Mood value not found in HTML');
+      console.warn('⚠️ Mood value not found in response');
       moodElement.textContent = '--%';
     }
   } catch (error) {
@@ -27,7 +27,9 @@ async function fetchMood() {
 // ================== Fetch crypto prices ==================
 async function fetchPrices() {
   try {
-    const res = await fetch("https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=bitcoin,ethereum,solana,cardano,ripple");
+    const res = await fetch(
+      "https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=bitcoin,ethereum,solana,cardano,ripple"
+    );
     if (!res.ok) throw new Error('Failed to fetch prices');
 
     const coins = await res.json();
@@ -52,9 +54,11 @@ async function fetchPrices() {
 }
 
 // ================== Init ==================
-fetchMood();       // теперь запускается сразу
+fetchMood();
 fetchPrices();
 
-setInterval(fetchMood, 5 * 60 * 1000);     // обновление каждые 5 мин
+// обновление каждые 5 минут
+setInterval(fetchMood, 5 * 60 * 1000);
 setInterval(fetchPrices, 5 * 60 * 1000);
+
 
