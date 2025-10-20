@@ -113,7 +113,7 @@ app.get('/api/mood',(req,res)=> res.json(lastScan));
 
 app.get('/api/prices', async (req,res)=>{
   try{
-    const url='https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum,binancecoin,ripple,cardano&vs_currencies=usd&include_24hr_change=true';
+    const url='https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum,binancecoin,ripple,cardano&vs_currencies=usd';
     const r = await fetch(url);
     const j = await r.json();
     res.json(j);
