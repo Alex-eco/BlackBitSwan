@@ -7,10 +7,11 @@ async function fetchMood() {
     if (!response.ok) throw new Error('Failed to fetch mood');
 
     const html = await response.text();
+    // Находим все вхождения процентов
     const matches = [...html.matchAll(/(\d+)\s*%/g)].map(m => parseInt(m[1], 10));
 
     if (matches.length > 0) {
-      // Берём последнее найденное значение
+      // Берем последнее найденное значение (скорее всего текущее)
       const moodValue = matches[matches.length - 1];
       moodElement.textContent = `${moodValue}%`;
     } else {
@@ -22,6 +23,10 @@ async function fetchMood() {
     moodElement.textContent = '--%';
   }
 }
+
+fetchMood();
+setInterval(fetchMood, 5 * 60 * 1000);
+
 
 // ================== Fetch crypto prices ==================
 async function fetchPrices() {
@@ -51,13 +56,5 @@ async function fetchPrices() {
 }
 
 // ================== Init ==================
-// задержка 15 секунд перед первым fetchMood
-setTimeout(fetchMood, 15000);
 fetchPrices();
-
-// обновление каждые 5 минут
-setInterval(fetchMood, 5 * 60 * 1000);
 setInterval(fetchPrices, 5 * 60 * 1000);
-
-
-
