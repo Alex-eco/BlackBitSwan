@@ -1,281 +1,117 @@
 ```javascript
 const API_BASE = 'https://blackbitswan.onrender.com';
-const COINGECKO_BASE = 'https://api.coingecko.com/api/v3';
-const BRENT_URL = 'https://croncopia.com/api/energy/brent_crude.json';
+const CG = 'https://api.coingecko.com/api/v3';
+const BRENT = 'https://croncopia.com/api/energy/brent_crude.json';
 
-const ASSETS = [
-  {
-    name: 'Bitcoin',
-    ticker: 'BTC',
-    id: 'bitcoin'
-  },
-  {
-    name: 'NVIDIA',
-    ticker: 'NVDAX',
-    id: 'nvidia-xstock'
-  },
-  {
-    name: 'Micron',
-    ticker: 'MUX',
-    id: 'micron-technology-xstock'
-  },
-  {
-    name: 'Alphabet',
-    ticker: 'GOOGLX',
-    id: 'alphabet-xstock'
-  },
-  {
-    name: 'Amazon',
-    ticker: 'AMZNX',
-    id: 'amazon-xstock'
-  }
+const assets = [
+  ['Bitcoin', 'BTC', 'bitcoin'],
+  ['NVIDIA', 'NVDAX', 'nvidia-xstock'],
+  ['Micron', 'MUX', 'micron-technology-xstock'],
+  ['Alphabet', 'GOOGLX', 'alphabet-xstock'],
+  ['Amazon', 'AMZNX', 'amazon-xstock']
 ];
 
-
-// ======================================================
-// MARKET MOOD
-// ======================================================
-
 async function fetchMood() {
-
-  const element = document.getElementById('mood-value');
-
-  if (!element) {
-    return;
-  }
+  const el = document.getElementById('mood-value');
+  if (!el) return;
 
   try {
+    const r = await fetch(API_BASE + '/api/mood');
+    const d = await r.json();
 
-    const response = await fetch(
-      API_BASE + '/api/mood'
-    );
+    el.textContent =
+      typeof d.mood_percent === 'number'
+        ? d.mood_percent + '%'
+        : '--%';
 
-    if (!response.ok) {
-      throw new Error(
-        'Mood HTTP ' + response.status
-      );
-    }
-
-    const data = await response.json();
-
-    if (typeof data.mood_percent === 'number') {
-
-      element.textContent =
-        data.mood_percent + '%';
-
-    } else {
-
-      element.textContent = '--%';
-
-    }
-
-  } catch (error) {
-
-    console.error('Mood error:', error);
-
-    element.textContent = '--%';
-
+  } catch (e) {
+    console.error('Mood:', e);
+    el.textContent = '--%';
   }
 }
 
-
-// ======================================================
-// BRENT
-// ======================================================
-
 async function fetchBrent() {
+  const r = await fetch(BRENT);
 
-  const response =
-    await fetch(BRENT_URL);
-
-  if (!response.ok) {
-
-    throw new Error(
-      'Brent HTTP ' + response.status
-    );
-
+  if (!r.ok) {
+    throw new Error('Brent HTTP ' + r.status);
   }
 
-  const data =
-    await response.json();
+  const d = await r.json();
+  const price = Number(d.price);
 
-  const price =
-    Number(data.price);
-
-  if (
-    !Number.isFinite(price) ||
-    price <= 0
-  ) {
-
-    throw new Error(
-      'Invalid Brent price'
-    );
-
+  if (!Number.isFinite(price) || price <= 0) {
+    throw new Error('Invalid Brent price');
   }
 
-  console.log(
-    'Brent price:',
-    price
-  );
+  console.log('Brent:', price);
 
   return price;
 }
 
-
-// ======================================================
-// COINGECKO
-// ======================================================
-
 async function fetchPrices() {
-
-  const ids =
-    ASSETS
-      .map(function(asset) {
-        return asset.id;
-      })
-      .join(',');
-
+  const ids = assets
+    .map(function (a) {
+      return a[2];
+    })
+    .join(',');
 
   const url =
-    COINGECKO_BASE +
+    CG +
     '/simple/price?ids=' +
     encodeURIComponent(ids) +
     '&vs_currencies=usd';
 
+  const r = await fetch(url);
 
-  console.log(
-    'CoinGecko URL:',
-    url
-  );
-
-
-  const response =
-    await fetch(url);
-
-
-  if (!response.ok) {
-
-    throw new Error(
-      'CoinGecko HTTP ' + response.status
-    );
-
+  if (!r.ok) {
+    throw new Error('CoinGecko HTTP ' + r.status);
   }
 
-
-  const data =
-    await response.json();
-
-
-  console.log(
-    'CoinGecko data:',
-    data
-  );
-
-
-  return data;
+  return await r.json();
 }
 
-
-// ======================================================
-// CREATE CARD
-// ======================================================
-
-function createCard(
-  name,
-  ticker,
-  value
-) {
-
-  const card =
-    document.createElement('div');
-
-  card.className =
-    'crypto-card';
-
-
-  let displayValue = '--';
-
-
-  if (
-    typeof value === 'number' &&
-    Number.isFinite(value)
-  ) {
-
-    displayValue =
-      '$' +
-      Math.round(value).toLocaleString('en-US');
-
-  }
-
-
-  card.innerHTML =
-    '<h3>' +
-    name +
-    '</h3>' +
-
-    '<p>' +
-    displayValue +
-    '</p>' +
-
-    '<small>' +
-    ticker +
-    '</small>';
-
-
-  return card;
-}
-
-
-// ======================================================
-// RENDER
-// ======================================================
-
-function renderMarket(values) {
-
+function render(values) {
   const container =
     document.getElementById('crypto-prices');
 
-
   if (!container) {
-
-    console.error(
-      '#crypto-prices not found'
-    );
-
+    console.error('#crypto-prices not found');
     return;
   }
 
-
   container.innerHTML = '';
 
+  assets.forEach(function (asset) {
+    const name = asset[0];
+    const ticker = asset[1];
+    const value = values[ticker];
 
-  ASSETS.forEach(function(asset) {
+    const card = document.createElement('div');
+    card.className = 'crypto-card';
 
-    const card =
-      createCard(
-        asset.name,
-        asset.ticker,
-        values[asset.ticker]
-      );
+    let text = '--';
 
+    if (
+      typeof value === 'number' &&
+      Number.isFinite(value)
+    ) {
+      text =
+        '$' +
+        Math.round(value).toLocaleString('en-US');
+    }
+
+    card.innerHTML =
+      '<h3>' + name + '</h3>' +
+      '<p>' + text + '</p>' +
+      '<small>' + ticker + '</small>';
 
     container.appendChild(card);
-
   });
-
 }
 
-
-// ======================================================
-// MARKET DATA
-// ======================================================
-
 async function fetchMarketData() {
-
-  console.log(
-    '===== MARKET UPDATE START ====='
-  );
-
+  console.log('MARKET UPDATE');
 
   const values = {
     BTC: null,
@@ -285,139 +121,54 @@ async function fetchMarketData() {
     AMZNX: null
   };
 
-
-  // ----------------------------------------------------
-  // Brent
-  // ----------------------------------------------------
-
-  let brent;
-
   try {
+    const brent = await fetchBrent();
+    const k = 80 / brent;
 
-    brent =
-      await fetchBrent();
+    console.log('K:', k);
 
-  } catch (error) {
+    const prices = await fetchPrices();
 
-    console.error(
-      'Brent error:',
-      error
-    );
+    assets.forEach(function (asset) {
+      const name = asset[0];
+      const ticker = asset[1];
+      const id = asset[2];
 
-    renderMarket(values);
-
-    return;
-  }
-
-
-  // ----------------------------------------------------
-  // K
-  // ----------------------------------------------------
-
-  const K =
-    80 / brent;
-
-
-  console.log(
-    'K:',
-    K
-  );
-
-
-  // ----------------------------------------------------
-  // CoinGecko
-  // ----------------------------------------------------
-
-  let prices;
-
-  try {
-
-    prices =
-      await fetchPrices();
-
-  } catch (error) {
-
-    console.error(
-      'CoinGecko error:',
-      error
-    );
-
-    renderMarket(values);
-
-    return;
-  }
-
-
-  // ----------------------------------------------------
-  // Adjusted values
-  // ----------------------------------------------------
-
-  ASSETS.forEach(function(asset) {
-
-    const rawPrice =
-      Number(
+      const price =
         prices &&
-        prices[asset.id] &&
-        prices[asset.id].usd
-      );
+        prices[id] &&
+        Number(prices[id].usd);
 
+      if (
+        Number.isFinite(price) &&
+        price > 0
+      ) {
+        values[ticker] = price * k;
 
-    if (
-      Number.isFinite(rawPrice) &&
-      rawPrice > 0
-    ) {
+        console.log(
+          name,
+          price,
+          '=>',
+          values[ticker]
+        );
+      } else {
+        console.warn(
+          'No price:',
+          ticker
+        );
+      }
+    });
 
-      values[asset.ticker] =
-        rawPrice * K;
+  } catch (e) {
+    console.error('Market:', e);
+  }
 
-
-      console.log(
-        asset.ticker +
-        ': ' +
-        rawPrice +
-        ' -> ' +
-        values[asset.ticker]
-      );
-
-    }
-
-  });
-
-
-  // ----------------------------------------------------
-  // Display
-  // ----------------------------------------------------
-
-  renderMarket(values);
-
-
-  console.log(
-    '===== MARKET UPDATE DONE ====='
-  );
+  render(values);
 }
-
-
-// ======================================================
-// START
-// ======================================================
 
 fetchMood();
 fetchMarketData();
 
-
-// ======================================================
-// REFRESH
-// ======================================================
-
-setInterval(
-  fetchMood,
-  5 * 60 * 1000
-);
-
-setInterval(
-  fetchMarketData,
-  5 * 60 * 1000
-);
-```
-
+setInterval(fetchMood, 5 * 60 * 1000);
+setInterval(fetchMarketData, 5 * 60 * 1000);
 ```
