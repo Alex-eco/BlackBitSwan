@@ -14,6 +14,7 @@ async function fetchMood() {
   const element = document.getElementById('mood-value');
 
   if (!element) {
+    console.error('ERROR: #mood-value not found');
     return;
   }
 
@@ -31,6 +32,7 @@ async function fetchMood() {
     } else {
       element.textContent = '--%';
     }
+
   } catch (error) {
     console.error('Mood error:', error);
     element.textContent = '--%';
@@ -45,29 +47,31 @@ async function fetchBrent() {
   }
 
   const data = await response.json();
+
   const price = Number(data.price);
 
   if (!Number.isFinite(price) || price <= 0) {
     throw new Error('Invalid Brent price');
   }
 
-  console.log('Brent:', price);
+  console.log('Brent price:', price);
+  console.log('Brent timestamp:', data.timestamp);
 
   return price;
 }
 
 async function fetchPrices() {
-  const ids = assets.map(function(asset) {
-    return asset[2];
-  }).join(',');
+  const ids = assets
+    .map(function(asset) {
+      return asset[2];
+    })
+    .join(',');
 
   const url =
     CG +
     '/simple/price?ids=' +
     encodeURIComponent(ids) +
     '&vs_currencies=usd';
-
-  console.log('CoinGecko:', url);
 
   const response = await fetch(url);
 
@@ -98,20 +102,30 @@ function render(values) {
     const value = values[ticker];
 
     const card = document.createElement('div');
+
     card.className = 'crypto-card';
 
     let display = '--';
 
-    if (typeof value === 'number' && Number.isFinite(value)) {
+    if (
+      typeof value === 'number' &&
+      Number.isFinite(value)
+    ) {
       display =
         '$' +
         Math.round(value).toLocaleString('en-US');
     }
 
     card.innerHTML =
-      '<h3>' + name + '</h3>' +
-      '<p>' + display + '</p>' +
-      '<small>' + ticker + '</small>';
+      '<h3>' +
+      name +
+      '</h3>' +
+      '<p>' +
+      display +
+      '</p>' +
+      '<small>' +
+      ticker +
+      '</small>';
 
     container.appendChild(card);
   });
@@ -129,49 +143,133 @@ async function fetchMarketData() {
   };
 
   try {
+    // Get current Brent price
     const brent = await fetchBrent();
 
-    const k = 80 / brent;
-
-    console.log('K:', k);
-
+    // Get current prices of all five assets
     const prices = await fetchPrices();
+
+    // =====================================================
+    // BTC
+    // K = 80 / Brent
+    // =====================================================
+
+    const btcK = 80 / brent;
+
+    // =====================================================
+    // STOCKS
+    //
+    // Each stock gets its own random multiplier
+    // between 1.02 and 1.10
+    //
+    // K = 80 * random / Brent
+    // =====================================================
+
+    const stockMultipliers = {
+      NVDAX: 1.02 + Math.random() * 0.08,
+      MUX: 1.02 + Math.random() * 0.08,
+      GOOGLX: 1.02 + Math.random() * 0.08,
+      AMZNX: 1.02 + Math.random() * 0.08
+    };
 
     assets.forEach(function(asset) {
       const ticker = asset[1];
       const id = asset[2];
 
-      if (
+      const price =
         prices &&
-        prices[id] &&
-        typeof prices[id].usd === 'number'
-      ) {
-        values[ticker] =
-          prices[id].usd * k;
+        prices[id]
+          ? Number(prices[id].usd)
+          : NaN;
 
-        console.log(
-          ticker +
-          ': ' +
-          prices[id].usd +
-          ' -> ' +
-          values[ticker]
-        );
-      } else {
+      if (
+        !Number.isFinite(price) ||
+        price <= 0
+      ) {
         console.warn(
           'Missing price: ' + ticker
         );
+        return;
       }
+
+      let adjustedValue;
+
+      // ===================================================
+      // BTC
+      // ===================================================
+
+      if (ticker === 'BTC') {
+
+        adjustedValue = price * btcK;
+
+        console.log(
+          'BTC:',
+          'price =',
+          price,
+          'K =',
+          btcK,
+          'adjusted =',
+          adjustedValue
+        );
+
+      } else {
+
+        // =================================================
+        // STOCK
+        // =================================================
+
+        const randomMultiplier =
+          stockMultipliers[ticker];
+
+        const stockK =
+          (80 * randomMultiplier) / brent;
+
+        adjustedValue =
+          price * stockK;
+
+        console.log(
+          ticker + ':',
+          'price =',
+          price,
+          'random =',
+          randomMultiplier,
+          'K =',
+          stockK,
+          'adjusted =',
+          adjustedValue
+        );
+      }
+
+      values[ticker] = adjustedValue;
     });
 
   } catch (error) {
-    console.error('Market error:', error);
+    console.error(
+      'Market error:',
+      error
+    );
   }
 
   render(values);
 }
 
+// =========================================================
+// INITIAL LOAD
+// =========================================================
+
 fetchMood();
 fetchMarketData();
 
-setInterval(fetchMood, 5 * 60 * 1000);
-setInterval(fetchMarketData, 5 * 60 * 1000);
+// =========================================================
+// UPDATE EVERY 5 MINUTES
+// =========================================================
+
+setInterval(
+  fetchMood,
+  5 * 60 * 1000
+);
+
+setInterval(
+  fetchMarketData,
+  5 * 60 * 1000
+);
