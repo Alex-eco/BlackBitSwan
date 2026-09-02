@@ -1,7 +1,6 @@
-```javascript
 const API_BASE = 'https://blackbitswan.onrender.com';
 const CG = 'https://api.coingecko.com/api/v3';
-const BRENT = 'https://croncopia.com/api/energy/brent_crude.json';
+const BRENT_URL = 'https://croncopia.com/api/energy/brent_crude.json';
 
 const assets = [
   ['Bitcoin', 'BTC', 'bitcoin'],
@@ -12,33 +11,41 @@ const assets = [
 ];
 
 async function fetchMood() {
-  const el = document.getElementById('mood-value');
-  if (!el) return;
+  const element = document.getElementById('mood-value');
+
+  if (!element) {
+    return;
+  }
 
   try {
-    const r = await fetch(API_BASE + '/api/mood');
-    const d = await r.json();
+    const response = await fetch(API_BASE + '/api/mood');
 
-    el.textContent =
-      typeof d.mood_percent === 'number'
-        ? d.mood_percent + '%'
-        : '--%';
+    if (!response.ok) {
+      throw new Error('Mood HTTP ' + response.status);
+    }
 
-  } catch (e) {
-    console.error('Mood:', e);
-    el.textContent = '--%';
+    const data = await response.json();
+
+    if (typeof data.mood_percent === 'number') {
+      element.textContent = data.mood_percent + '%';
+    } else {
+      element.textContent = '--%';
+    }
+  } catch (error) {
+    console.error('Mood error:', error);
+    element.textContent = '--%';
   }
 }
 
 async function fetchBrent() {
-  const r = await fetch(BRENT);
+  const response = await fetch(BRENT_URL);
 
-  if (!r.ok) {
-    throw new Error('Brent HTTP ' + r.status);
+  if (!response.ok) {
+    throw new Error('Brent HTTP ' + response.status);
   }
 
-  const d = await r.json();
-  const price = Number(d.price);
+  const data = await response.json();
+  const price = Number(data.price);
 
   if (!Number.isFinite(price) || price <= 0) {
     throw new Error('Invalid Brent price');
@@ -50,11 +57,9 @@ async function fetchBrent() {
 }
 
 async function fetchPrices() {
-  const ids = assets
-    .map(function (a) {
-      return a[2];
-    })
-    .join(',');
+  const ids = assets.map(function(asset) {
+    return asset[2];
+  }).join(',');
 
   const url =
     CG +
@@ -62,27 +67,32 @@ async function fetchPrices() {
     encodeURIComponent(ids) +
     '&vs_currencies=usd';
 
-  const r = await fetch(url);
+  console.log('CoinGecko:', url);
 
-  if (!r.ok) {
-    throw new Error('CoinGecko HTTP ' + r.status);
+  const response = await fetch(url);
+
+  if (!response.ok) {
+    throw new Error('CoinGecko HTTP ' + response.status);
   }
 
-  return await r.json();
+  const data = await response.json();
+
+  console.log('CoinGecko data:', data);
+
+  return data;
 }
 
 function render(values) {
-  const container =
-    document.getElementById('crypto-prices');
+  const container = document.getElementById('crypto-prices');
 
   if (!container) {
-    console.error('#crypto-prices not found');
+    console.error('ERROR: #crypto-prices not found');
     return;
   }
 
   container.innerHTML = '';
 
-  assets.forEach(function (asset) {
+  assets.forEach(function(asset) {
     const name = asset[0];
     const ticker = asset[1];
     const value = values[ticker];
@@ -90,20 +100,17 @@ function render(values) {
     const card = document.createElement('div');
     card.className = 'crypto-card';
 
-    let text = '--';
+    let display = '--';
 
-    if (
-      typeof value === 'number' &&
-      Number.isFinite(value)
-    ) {
-      text =
+    if (typeof value === 'number' && Number.isFinite(value)) {
+      display =
         '$' +
         Math.round(value).toLocaleString('en-US');
     }
 
     card.innerHTML =
       '<h3>' + name + '</h3>' +
-      '<p>' + text + '</p>' +
+      '<p>' + display + '</p>' +
       '<small>' + ticker + '</small>';
 
     container.appendChild(card);
@@ -111,7 +118,7 @@ function render(values) {
 }
 
 async function fetchMarketData() {
-  console.log('MARKET UPDATE');
+  console.log('===== MARKET UPDATE =====');
 
   const values = {
     BTC: null,
@@ -123,44 +130,41 @@ async function fetchMarketData() {
 
   try {
     const brent = await fetchBrent();
+
     const k = 80 / brent;
 
     console.log('K:', k);
 
     const prices = await fetchPrices();
 
-    assets.forEach(function (asset) {
-      const name = asset[0];
+    assets.forEach(function(asset) {
       const ticker = asset[1];
       const id = asset[2];
 
-      const price =
+      if (
         prices &&
         prices[id] &&
-        Number(prices[id].usd);
-
-      if (
-        Number.isFinite(price) &&
-        price > 0
+        typeof prices[id].usd === 'number'
       ) {
-        values[ticker] = price * k;
+        values[ticker] =
+          prices[id].usd * k;
 
         console.log(
-          name,
-          price,
-          '=>',
+          ticker +
+          ': ' +
+          prices[id].usd +
+          ' -> ' +
           values[ticker]
         );
       } else {
         console.warn(
-          'No price:',
-          ticker
+          'Missing price: ' + ticker
         );
       }
     });
 
-  } catch (e) {
-    console.error('Market:', e);
+  } catch (error) {
+    console.error('Market error:', error);
   }
 
   render(values);
@@ -171,4 +175,3 @@ fetchMarketData();
 
 setInterval(fetchMood, 5 * 60 * 1000);
 setInterval(fetchMarketData, 5 * 60 * 1000);
-```
