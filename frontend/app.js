@@ -1,10 +1,19 @@
-// ================== API base URL ==================
+```javascript
+// ======================================================
+// BlackBitSwan
+// Market Data — CoinGecko only
+// Backend is NOT used for market prices
+// ======================================================
+
 const API_BASE = 'https://blackbitswan.onrender.com';
 
-// ================== CoinGecko ==================
 const COINGECKO_BASE = 'https://api.coingecko.com/api/v3';
 
-// Tokenized stocks + Bitcoin
+
+// ======================================================
+// CoinGecko IDs
+// ======================================================
+
 const ASSETS = [
   {
     id: 'bitcoin',
@@ -33,154 +42,339 @@ const ASSETS = [
   }
 ];
 
-// Brent price from CoinGecko
+
+// Brent on CoinGecko
+
 const BRENT_ID = 'crude-oil-brent-futures';
 
-// ================== Fetch market mood ==================
+
+// ======================================================
+// Market Mood
+// ======================================================
+
 const moodElement = document.getElementById('mood-value');
 
+
 async function fetchMood() {
+
   try {
-    const response = await fetch(`${API_BASE}/api/mood`);
+
+    const response =
+      await fetch(`${API_BASE}/api/mood`);
 
     if (!response.ok) {
-      throw new Error(`Mood request failed: ${response.status}`);
+      throw new Error(
+        `Mood HTTP ${response.status}`
+      );
     }
 
-    const data = await response.json();
+    const data =
+      await response.json();
 
-    if (data && typeof data.mood_percent === 'number') {
-      moodElement.textContent = `${data.mood_percent}%`;
+    if (
+      data &&
+      typeof data.mood_percent === 'number'
+    ) {
+
+      moodElement.textContent =
+        `${data.mood_percent}%`;
+
     } else {
-      console.warn('⚠️ Mood value not found');
+
       moodElement.textContent = '--%';
+
     }
+
   } catch (error) {
-    console.error('❌ Error fetching market mood:', error);
+
+    console.error(
+      '❌ Market Mood error:',
+      error
+    );
+
     moodElement.textContent = '--%';
   }
 }
 
-// ================== Fetch CoinGecko prices ==================
+
+// ======================================================
+// Fetch one CoinGecko price
+// ======================================================
+
+async function getCoinGeckoPrice(id) {
+
+  const url =
+    `${COINGECKO_BASE}/simple/price` +
+    `?ids=${encodeURIComponent(id)}` +
+    `&vs_currencies=usd`;
+
+
+  const response =
+    await fetch(url);
+
+
+  if (!response.ok) {
+
+    throw new Error(
+      `CoinGecko ${id}: HTTP ${response.status}`
+    );
+
+  }
+
+
+  const data =
+    await response.json();
+
+
+  const price =
+    data?.[id]?.usd;
+
+
+  if (
+    typeof price !== 'number' ||
+    !Number.isFinite(price) ||
+    price <= 0
+  ) {
+
+    throw new Error(
+      `CoinGecko ${id}: price unavailable`
+    );
+
+  }
+
+
+  return price;
+}
+
+
+// ======================================================
+// Create card
+// ======================================================
+
+function createCard(
+  name,
+  ticker,
+  value
+) {
+
+  const card =
+    document.createElement('div');
+
+  card.className =
+    'crypto-card';
+
+
+  if (
+    typeof value === 'number' &&
+    Number.isFinite(value)
+  ) {
+
+    card.innerHTML = `
+      <h3>${name}</h3>
+      <p>$${Math.round(value).toLocaleString('en-US')}</p>
+      <small>${ticker}</small>
+    `;
+
+  } else {
+
+    card.innerHTML = `
+      <h3>${name}</h3>
+      <p>--</p>
+      <small>${ticker}</small>
+    `;
+
+  }
+
+
+  return card;
+}
+
+
+// ======================================================
+// Market Data
+// ======================================================
+
 async function fetchMarketData() {
-  const container = document.getElementById('crypto-prices');
+
+  const container =
+    document.getElementById('crypto-prices');
+
 
   if (!container) {
-    console.error('❌ #crypto-prices element not found');
+
+    console.error(
+      '❌ crypto-prices container not found'
+    );
+
     return;
   }
 
+
+  console.log(
+    '📊 Loading CoinGecko market data...'
+  );
+
+
+  // ----------------------------------------------------
+  // FIRST: get Brent independently
+  // ----------------------------------------------------
+
+  let brentPrice = null;
+
   try {
-    // --------------------------------------------------
-    // One CoinGecko request for all 6 required assets
-    // --------------------------------------------------
-    const ids = [
-      ...ASSETS.map(asset => asset.id),
-      BRENT_ID
-    ].join(',');
 
-    const url =
-      `${COINGECKO_BASE}/simple/price` +
-      `?ids=${encodeURIComponent(ids)}` +
-      `&vs_currencies=usd`;
+    brentPrice =
+      await getCoinGeckoPrice(BRENT_ID);
 
-    const response = await fetch(url);
-
-    if (!response.ok) {
-      throw new Error(`CoinGecko request failed: ${response.status}`);
-    }
-
-    const data = await response.json();
-
-    // --------------------------------------------------
-    // Brent
-    // K = 80 / current Brent price
-    // --------------------------------------------------
-    const brentPrice = data?.[BRENT_ID]?.usd;
-
-    if (
-      typeof brentPrice !== 'number' ||
-      !Number.isFinite(brentPrice) ||
-      brentPrice <= 0
-    ) {
-      throw new Error('Brent price unavailable from CoinGecko');
-    }
-
-    const K = 80 / brentPrice;
-
-    console.log('CoinGecko Brent price:', brentPrice);
-    console.log('Calculated K:', K);
-
-    // --------------------------------------------------
-    // Clear old cards
-    // --------------------------------------------------
-    container.innerHTML = '';
-
-    // --------------------------------------------------
-    // Create exactly 5 cards
-    // --------------------------------------------------
-    ASSETS.forEach(asset => {
-      const currentPrice = data?.[asset.id]?.usd;
-
-      const card = document.createElement('div');
-      card.className = 'crypto-card';
-
-      if (
-        typeof currentPrice === 'number' &&
-        Number.isFinite(currentPrice)
-      ) {
-        // Required calculation:
-        // adjustedValue = currentAssetPrice * K
-        const adjustedValue = Math.round(currentPrice * K);
-
-        card.innerHTML = `
-          <h3>${asset.name}</h3>
-          <p>$${adjustedValue.toLocaleString('en-US')}</p>
-          <small>${asset.ticker}</small>
-        `;
-      } else {
-        // One missing asset must NOT break the other cards
-        card.innerHTML = `
-          <h3>${asset.name}</h3>
-          <p>--</p>
-          <small>${asset.ticker}</small>
-        `;
-
-        console.warn(
-          `⚠️ CoinGecko price unavailable for ${asset.name} (${asset.id})`
-        );
-      }
-
-      container.appendChild(card);
-    });
+    console.log(
+      '🛢 Brent:',
+      brentPrice
+    );
 
   } catch (error) {
-    console.error('❌ Error fetching CoinGecko market data:', error);
 
-    // Do not destroy the existing market block.
-    // Show 5 cards with placeholders instead.
-    container.innerHTML = '';
+    console.error(
+      '❌ Brent unavailable:',
+      error
+    );
 
-    ASSETS.forEach(asset => {
-      const card = document.createElement('div');
-      card.className = 'crypto-card';
-
-      card.innerHTML = `
-        <h3>${asset.name}</h3>
-        <p>--</p>
-        <small>${asset.ticker}</small>
-      `;
-
-      container.appendChild(card);
-    });
   }
+
+
+  // ----------------------------------------------------
+  // Calculate K only when Brent exists
+  // ----------------------------------------------------
+
+  let K = null;
+
+  if (
+    typeof brentPrice === 'number' &&
+    Number.isFinite(brentPrice) &&
+    brentPrice > 0
+  ) {
+
+    K =
+      80 / brentPrice;
+
+  }
+
+
+  // ----------------------------------------------------
+  // Fetch all five assets independently
+  // ----------------------------------------------------
+
+  const results =
+    await Promise.allSettled(
+
+      ASSETS.map(
+        asset =>
+          getCoinGeckoPrice(asset.id)
+      )
+
+    );
+
+
+  // ----------------------------------------------------
+  // Clear existing cards
+  // ----------------------------------------------------
+
+  container.innerHTML = '';
+
+
+  // ----------------------------------------------------
+  // Build five cards
+  // ----------------------------------------------------
+
+  ASSETS.forEach(
+    (asset, index) => {
+
+      const result =
+        results[index];
+
+
+      let adjustedValue = null;
+
+
+      // Asset price successfully received
+      if (
+        result.status === 'fulfilled' &&
+        typeof K === 'number'
+      ) {
+
+        const currentPrice =
+          result.value;
+
+
+        adjustedValue =
+          currentPrice * K;
+
+
+        console.log(
+          `${asset.ticker}:`,
+          currentPrice,
+          '→',
+          Math.round(adjustedValue)
+        );
+
+      }
+
+
+      // If asset failed
+      if (
+        result.status === 'rejected'
+      ) {
+
+        console.error(
+          `❌ ${asset.ticker} unavailable:`,
+          result.reason
+        );
+
+      }
+
+
+      container.appendChild(
+        createCard(
+          asset.name,
+          asset.ticker,
+          adjustedValue
+        )
+      );
+
+    }
+  );
+
+
+  // ----------------------------------------------------
+  // Diagnostic information only in browser console
+  // ----------------------------------------------------
+
+  console.log(
+    '✅ Market Data update completed'
+  );
+
 }
 
-// ================== Init ==================
+
+// ======================================================
+// Initial load
+// ======================================================
+
 fetchMood();
+
 fetchMarketData();
 
-// ================== Auto refresh ==================
-// Every 5 minutes
-setInterval(fetchMood, 5 * 60 * 1000);
-setInterval(fetchMarketData, 5 * 60 * 1000);
+
+// ======================================================
+// Refresh every 5 minutes
+// ======================================================
+
+setInterval(
+  fetchMood,
+  5 * 60 * 1000
+);
+
+setInterval(
+  fetchMarketData,
+  5 * 60 * 1000
+);
+```
