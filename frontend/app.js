@@ -1,23 +1,7 @@
 ```javascript
-// ======================================================
-// BlackBitSwan
-// Market Data
-//
-// Assets: CoinGecko
-// Brent: Croncopia
-//
-// Formula:
-// K = 80 / Brent
-// Adjusted Price = Asset Price * K
-// ======================================================
-
 const API_BASE = 'https://blackbitswan.onrender.com';
 const COINGECKO_BASE = 'https://api.coingecko.com/api/v3';
-
-
-// ======================================================
-// Assets
-// ======================================================
+const BRENT_URL = 'https://croncopia.com/api/energy/brent_crude.json';
 
 const ASSETS = [
   {
@@ -49,189 +33,118 @@ const ASSETS = [
 
 
 // ======================================================
-// Brent
-// ======================================================
-
-const BRENT_URL =
-  'https://croncopia.com/api/energy/brent_crude.json';
-
-const BRENT_CACHE_KEY =
-  'blackbitswan_brent_price';
-
-
-// ======================================================
-// Market Mood
+// MARKET MOOD
 // ======================================================
 
 async function fetchMood() {
 
-  const moodElement =
-    document.getElementById('mood-value');
+  const element = document.getElementById('mood-value');
 
-  if (!moodElement) {
-    console.warn('⚠️ #mood-value not found');
+  if (!element) {
     return;
   }
 
   try {
 
-    const response =
-      await fetch(`${API_BASE}/api/mood`);
+    const response = await fetch(
+      API_BASE + '/api/mood'
+    );
 
     if (!response.ok) {
       throw new Error(
-        `Mood HTTP ${response.status}`
+        'Mood HTTP ' + response.status
       );
     }
 
-    const data =
-      await response.json();
+    const data = await response.json();
 
-    if (
-      data &&
-      typeof data.mood_percent === 'number'
-    ) {
+    if (typeof data.mood_percent === 'number') {
 
-      moodElement.textContent =
-        `${data.mood_percent}%`;
+      element.textContent =
+        data.mood_percent + '%';
 
     } else {
 
-      moodElement.textContent =
-        '--%';
+      element.textContent = '--%';
 
     }
 
   } catch (error) {
 
-    console.error(
-      '❌ Market Mood error:',
-      error
-    );
+    console.error('Mood error:', error);
 
-    moodElement.textContent =
-      '--%';
+    element.textContent = '--%';
+
   }
 }
 
 
 // ======================================================
-// Get Brent price
+// BRENT
 // ======================================================
 
-async function fetchBrentPrice() {
+async function fetchBrent() {
 
-  try {
+  const response =
+    await fetch(BRENT_URL);
 
-    console.log(
-      '🛢 Requesting Brent price...'
+  if (!response.ok) {
+
+    throw new Error(
+      'Brent HTTP ' + response.status
     );
 
-    const response =
-      await fetch(BRENT_URL);
-
-    if (!response.ok) {
-
-      throw new Error(
-        `Brent HTTP ${response.status}`
-      );
-
-    }
-
-    const data =
-      await response.json();
-
-    const price =
-      Number(data?.price);
-
-
-    if (
-      !Number.isFinite(price) ||
-      price <= 0
-    ) {
-
-      throw new Error(
-        'Invalid Brent price'
-      );
-
-    }
-
-
-    // Save last successful Brent price
-    localStorage.setItem(
-      BRENT_CACHE_KEY,
-      String(price)
-    );
-
-
-    console.log(
-      '🛢 Brent:',
-      price
-    );
-
-
-    return price;
-
-  } catch (error) {
-
-    console.error(
-      '❌ Brent request failed:',
-      error
-    );
-
-
-    // --------------------------------------------------
-    // Fallback to last successful price
-    // --------------------------------------------------
-
-    const cached =
-      Number(
-        localStorage.getItem(
-          BRENT_CACHE_KEY
-        )
-      );
-
-
-    if (
-      Number.isFinite(cached) &&
-      cached > 0
-    ) {
-
-      console.warn(
-        '⚠️ Using cached Brent:',
-        cached
-      );
-
-      return cached;
-
-    }
-
-
-    throw error;
   }
+
+  const data =
+    await response.json();
+
+  const price =
+    Number(data.price);
+
+  if (
+    !Number.isFinite(price) ||
+    price <= 0
+  ) {
+
+    throw new Error(
+      'Invalid Brent price'
+    );
+
+  }
+
+  console.log(
+    'Brent price:',
+    price
+  );
+
+  return price;
 }
 
 
 // ======================================================
-// Get CoinGecko prices
+// COINGECKO
 // ======================================================
 
-async function fetchAssetPrices() {
+async function fetchPrices() {
 
   const ids =
     ASSETS
-      .map(asset => asset.id)
+      .map(function(asset) {
+        return asset.id;
+      })
       .join(',');
 
 
   const url =
-    `${COINGECKO_BASE}/simple/price` +
-    `?ids=${encodeURIComponent(ids)}` +
-    `&vs_currencies=usd`;
+    COINGECKO_BASE +
+    '/simple/price?ids=' +
+    encodeURIComponent(ids) +
+    '&vs_currencies=usd';
 
 
   console.log(
-    '📡 CoinGecko request:',
+    'CoinGecko URL:',
     url
   );
 
@@ -243,7 +156,7 @@ async function fetchAssetPrices() {
   if (!response.ok) {
 
     throw new Error(
-      `CoinGecko HTTP ${response.status}`
+      'CoinGecko HTTP ' + response.status
     );
 
   }
@@ -254,7 +167,7 @@ async function fetchAssetPrices() {
 
 
   console.log(
-    '📊 CoinGecko prices:',
+    'CoinGecko data:',
     data
   );
 
@@ -264,10 +177,10 @@ async function fetchAssetPrices() {
 
 
 // ======================================================
-// Create market card
+// CREATE CARD
 // ======================================================
 
-function createMarketCard(
+function createCard(
   name,
   ticker,
   value
@@ -289,16 +202,24 @@ function createMarketCard(
   ) {
 
     displayValue =
-      `$${Math.round(value).toLocaleString('en-US')}`;
+      '$' +
+      Math.round(value).toLocaleString('en-US');
 
   }
 
 
-  card.innerHTML = `
-    <h3>${name}</h3>
-    <p>${displayValue}</p>
-    <small>${ticker}</small>
-  `;
+  card.innerHTML =
+    '<h3>' +
+    name +
+    '</h3>' +
+
+    '<p>' +
+    displayValue +
+    '</p>' +
+
+    '<small>' +
+    ticker +
+    '</small>';
 
 
   return card;
@@ -306,10 +227,10 @@ function createMarketCard(
 
 
 // ======================================================
-// Render market cards
+// RENDER
 // ======================================================
 
-function renderMarketCards(values) {
+function renderMarket(values) {
 
   const container =
     document.getElementById('crypto-prices');
@@ -318,7 +239,7 @@ function renderMarketCards(values) {
   if (!container) {
 
     console.error(
-      '❌ #crypto-prices not found'
+      '#crypto-prices not found'
     );
 
     return;
@@ -328,15 +249,17 @@ function renderMarketCards(values) {
   container.innerHTML = '';
 
 
-  ASSETS.forEach(asset => {
+  ASSETS.forEach(function(asset) {
 
-    container.appendChild(
-      createMarketCard(
+    const card =
+      createCard(
         asset.name,
         asset.ticker,
         values[asset.ticker]
-      )
-    );
+      );
+
+
+    container.appendChild(card);
 
   });
 
@@ -344,13 +267,13 @@ function renderMarketCards(values) {
 
 
 // ======================================================
-// Fetch Market Data
+// MARKET DATA
 // ======================================================
 
 async function fetchMarketData() {
 
   console.log(
-    '========== MARKET UPDATE =========='
+    '===== MARKET UPDATE START ====='
   );
 
 
@@ -364,80 +287,78 @@ async function fetchMarketData() {
 
 
   // ----------------------------------------------------
-  // 1. Get Brent
+  // Brent
   // ----------------------------------------------------
 
-  let brentPrice;
-
+  let brent;
 
   try {
 
-    brentPrice =
-      await fetchBrentPrice();
+    brent =
+      await fetchBrent();
 
   } catch (error) {
 
     console.error(
-      '❌ Cannot calculate market values:',
+      'Brent error:',
       error
     );
 
-
-    renderMarketCards(values);
+    renderMarket(values);
 
     return;
   }
 
 
   // ----------------------------------------------------
-  // 2. Calculate K
+  // K
   // ----------------------------------------------------
 
   const K =
-    80 / brentPrice;
+    80 / brent;
 
 
   console.log(
-    'K calculated:',
+    'K:',
     K
   );
 
 
   // ----------------------------------------------------
-  // 3. Get CoinGecko prices
+  // CoinGecko
   // ----------------------------------------------------
 
   let prices;
 
-
   try {
 
     prices =
-      await fetchAssetPrices();
+      await fetchPrices();
 
   } catch (error) {
 
     console.error(
-      '❌ CoinGecko error:',
+      'CoinGecko error:',
       error
     );
 
-
-    renderMarketCards(values);
+    renderMarket(values);
 
     return;
   }
 
 
   // ----------------------------------------------------
-  // 4. Calculate adjusted values
+  // Adjusted values
   // ----------------------------------------------------
 
-  ASSETS.forEach(asset => {
+  ASSETS.forEach(function(asset) {
 
     const rawPrice =
       Number(
-        prices?.[asset.id]?.usd
+        prices &&
+        prices[asset.id] &&
+        prices[asset.id].usd
       );
 
 
@@ -446,25 +367,16 @@ async function fetchMarketData() {
       rawPrice > 0
     ) {
 
-      const adjustedValue =
+      values[asset.ticker] =
         rawPrice * K;
 
 
-      values[asset.ticker] =
-        adjustedValue;
-
-
       console.log(
-        `${asset.ticker}:`,
-        rawPrice,
-        '→',
-        adjustedValue
-      );
-
-    } else {
-
-      console.warn(
-        `⚠️ No price for ${asset.ticker}`
+        asset.ticker +
+        ': ' +
+        rawPrice +
+        ' -> ' +
+        values[asset.ticker]
       );
 
     }
@@ -473,20 +385,20 @@ async function fetchMarketData() {
 
 
   // ----------------------------------------------------
-  // 5. Render
+  // Display
   // ----------------------------------------------------
 
-  renderMarketCards(values);
+  renderMarket(values);
 
 
   console.log(
-    '========== MARKET UPDATE DONE =========='
+    '===== MARKET UPDATE DONE ====='
   );
 }
 
 
 // ======================================================
-// Initial load
+// START
 // ======================================================
 
 fetchMood();
@@ -494,7 +406,7 @@ fetchMarketData();
 
 
 // ======================================================
-// Refresh every 5 minutes
+// REFRESH
 // ======================================================
 
 setInterval(
@@ -506,4 +418,6 @@ setInterval(
   fetchMarketData,
   5 * 60 * 1000
 );
+```
+
 ```
