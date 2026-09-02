@@ -1,14 +1,12 @@
-```javascript
 // ======================================================
 // BlackBitSwan
 // Market Data
-// CoinGecko only
+// CoinGecko
 // ======================================================
 
 const API_BASE = 'https://blackbitswan.onrender.com';
 
-const COINGECKO_BASE =
-  'https://api.coingecko.com/api/v3';
+const COINGECKO_BASE = 'https://api.coingecko.com/api/v3';
 
 
 // ======================================================
@@ -19,60 +17,50 @@ const ASSETS = [
   {
     name: 'Bitcoin',
     ticker: 'BTC',
-    type: 'bitcoin'
+    id: 'bitcoin'
   },
   {
     name: 'NVIDIA',
     ticker: 'NVDAX',
-    type: 'tokenized'
+    id: 'nvidia-xstock'
   },
   {
     name: 'Micron',
     ticker: 'MUX',
-    type: 'tokenized'
+    id: 'micron-technology-xstock'
   },
   {
     name: 'Alphabet',
     ticker: 'GOOGLX',
-    type: 'tokenized'
+    id: 'alphabet-xstock'
   },
   {
     name: 'Amazon',
     ticker: 'AMZNX',
-    type: 'tokenized'
+    id: 'amazon-xstock'
   }
 ];
-
-
-// ======================================================
-// Brent search term
-// ======================================================
-
-const BRENT_SEARCH =
-  'BRENTOIL';
-
-
-// ======================================================
-// Cache
-// ======================================================
-
-const resolvedIds = {};
 
 
 // ======================================================
 // Market Mood
 // ======================================================
 
-const moodElement =
-  document.getElementById('mood-value');
+const moodElement = document.getElementById('mood-value');
 
 
 async function fetchMood() {
 
+  if (!moodElement) {
+    console.warn('⚠️ #mood-value not found');
+    return;
+  }
+
   try {
 
-    const response =
-      await fetch(`${API_BASE}/api/mood`);
+    const response = await fetch(
+      `${API_BASE}/api/mood`
+    );
 
     if (!response.ok) {
       throw new Error(
@@ -80,8 +68,7 @@ async function fetchMood() {
       );
     }
 
-    const data =
-      await response.json();
+    const data = await response.json();
 
     if (
       data &&
@@ -93,285 +80,256 @@ async function fetchMood() {
 
     } else {
 
-      moodElement.textContent =
-        '--%';
+      moodElement.textContent = '--%';
 
     }
 
   } catch (error) {
 
     console.error(
-      '❌ Mood error:',
+      '❌ Market Mood error:',
       error
     );
 
-    moodElement.textContent =
-      '--%';
+    moodElement.textContent = '--%';
   }
 }
 
 
 // ======================================================
-// CoinGecko search
+// Get CoinGecko prices
+//
+// One request for all five assets.
 // ======================================================
 
-async function searchCoinGecko(query) {
+async function fetchAssetPrices() {
 
-  const url =
-    `${COINGECKO_BASE}/search?query=${encodeURIComponent(query)}`;
-
-
-  const response =
-    await fetch(url);
-
-
-  if (!response.ok) {
-
-    throw new Error(
-      `CoinGecko search HTTP ${response.status}`
-    );
-
-  }
-
-
-  const data =
-    await response.json();
-
-
-  return data?.coins || [];
-}
-
-
-// ======================================================
-// Find exact tokenized stock ID
-// ======================================================
-
-async function findTokenizedStockId(ticker) {
-
-  // Already resolved
-  if (resolvedIds[ticker]) {
-    return resolvedIds[ticker];
-  }
-
-
-  const coins =
-    await searchCoinGecko(ticker);
-
-
-  // Prefer exact symbol match
-  let match =
-    coins.find(
-      coin =>
-        String(coin.symbol).toUpperCase() ===
-        ticker.toUpperCase()
-    );
-
-
-  // Prefer xStock name
-  if (!match) {
-
-    match =
-      coins.find(
-        coin =>
-          String(coin.name)
-            .toLowerCase()
-            .includes('xstock')
-      );
-
-  }
-
-
-  if (!match) {
-
-    throw new Error(
-      `Tokenized stock not found: ${ticker}`
-    );
-
-  }
-
-
-  resolvedIds[ticker] =
-    match.id;
-
-
-  console.log(
-    `✅ ${ticker} → ${match.id} → ${match.name}`
-  );
-
-
-  return match.id;
-}
-
-
-// ======================================================
-// Get price using CoinGecko /simple/price
-// ======================================================
-
-async function getPrice(id) {
+  const ids = ASSETS
+    .map(asset => asset.id)
+    .join(',');
 
   const url =
     `${COINGECKO_BASE}/simple/price` +
-    `?ids=${encodeURIComponent(id)}` +
+    `?ids=${encodeURIComponent(ids)}` +
     `&vs_currencies=usd`;
 
+  console.log('📡 CoinGecko request:', url);
 
-  const response =
-    await fetch(url);
-
+  const response = await fetch(url);
 
   if (!response.ok) {
 
     throw new Error(
-      `Price HTTP ${response.status} for ${id}`
+      `CoinGecko HTTP ${response.status}`
     );
 
   }
 
+  const data = await response.json();
 
-  const data =
-    await response.json();
+  console.log(
+    '📊 CoinGecko asset prices:',
+    data
+  );
 
-
-  const price =
-    data?.[id]?.usd;
-
-
-  if (
-    typeof price !== 'number' ||
-    !Number.isFinite(price) ||
-    price <= 0
-  ) {
-
-    throw new Error(
-      `No USD price for ${id}`
-    );
-
-  }
-
-
-  return price;
+  return data;
 }
 
 
 // ======================================================
-// Get Bitcoin price
+// Get Brent
 //
-// IMPORTANT:
-// This uses the SAME endpoint that was proven
-// to work in your original version.
+// CoinGecko displays Brent as:
+//
+// Crude Oil Brent Futures
+// Symbol: BRENTOIL
+//
+// It is NOT a normal CoinGecko coin ID,
+// therefore it is handled separately.
 // ======================================================
 
-async function getBitcoinPrice() {
+async function fetchBrentPrice() {
 
-  const url =
-    `${COINGECKO_BASE}/coins/markets` +
-    `?vs_currency=usd` +
-    `&ids=bitcoin`;
+  /*
+   * CoinGecko's public website exposes the current
+   * Brent benchmark here:
+   *
+   * Crude Oil Brent Futures (BRENTOIL)
+   *
+   * The public /search endpoint must NOT be used
+   * to resolve BRENTOIL as a coin.
+   *
+   * We first try CoinGecko's commodity data endpoint.
+   */
 
+  const urls = [
 
-  const response =
-    await fetch(url);
+    'https://api.coingecko.com/api/v3/commodities',
 
+    'https://api.coingecko.com/api/v3/commodities/crude-oil-brent-futures'
 
-  if (!response.ok) {
+  ];
 
-    throw new Error(
-      `Bitcoin HTTP ${response.status}`
-    );
+  for (const url of urls) {
 
-  }
+    try {
 
-
-  const data =
-    await response.json();
-
-
-  const price =
-    data?.[0]?.current_price;
-
-
-  if (
-    typeof price !== 'number' ||
-    !Number.isFinite(price) ||
-    price <= 0
-  ) {
-
-    throw new Error(
-      'Bitcoin price unavailable'
-    );
-
-  }
-
-
-  console.log(
-    '₿ Bitcoin:',
-    price
-  );
-
-
-  return price;
-}
-
-
-// ======================================================
-// Find Brent ID
-// ======================================================
-
-async function findBrentId() {
-
-  const coins =
-    await searchCoinGecko(BRENT_SEARCH);
-
-
-  console.log(
-    '🔎 Brent search:',
-    coins
-  );
-
-
-  // Exact symbol BRENTOIL
-  let match =
-    coins.find(
-      coin =>
-        String(coin.symbol).toUpperCase() ===
-        'BRENTOIL'
-    );
-
-
-  // Otherwise look for Brent
-  if (!match) {
-
-    match =
-      coins.find(
-        coin =>
-          String(coin.name)
-            .toLowerCase()
-            .includes('brent')
+      console.log(
+        '🛢 Trying Brent:',
+        url
       );
 
+      const response = await fetch(url);
+
+      if (!response.ok) {
+        console.warn(
+          `Brent endpoint HTTP ${response.status}:`,
+          url
+        );
+        continue;
+      }
+
+      const data = await response.json();
+
+      console.log(
+        '🛢 Brent response:',
+        data
+      );
+
+      const price = extractBrentPrice(data);
+
+      if (
+        typeof price === 'number' &&
+        Number.isFinite(price) &&
+        price > 0
+      ) {
+
+        console.log(
+          '🛢 Brent price:',
+          price
+        );
+
+        return price;
+
+      }
+
+    } catch (error) {
+
+      console.warn(
+        '⚠️ Brent endpoint failed:',
+        error
+      );
+
+    }
+
   }
 
 
-  if (!match) {
-
-    throw new Error(
-      'Brent not found on CoinGecko'
-    );
-
-  }
-
-
-  console.log(
-    `🛢 Brent → ${match.id} → ${match.name}`
+  throw new Error(
+    'Unable to retrieve BRENTOIL price from CoinGecko'
   );
-
-
-  return match.id;
 }
 
 
 // ======================================================
-// Create market card
+// Extract Brent price from possible CoinGecko formats
+// ======================================================
+
+function extractBrentPrice(data) {
+
+  // Direct object
+
+  if (
+    data &&
+    typeof data.price === 'number'
+  ) {
+    return data.price;
+  }
+
+
+  if (
+    data &&
+    typeof data.current_price === 'number'
+  ) {
+    return data.current_price;
+  }
+
+
+  if (
+    data &&
+    typeof data.usd === 'number'
+  ) {
+    return data.usd;
+  }
+
+
+  // BRENTOIL object
+
+  if (
+    data &&
+    data.BRENTOIL &&
+    typeof data.BRENTOIL.usd === 'number'
+  ) {
+    return data.BRENTOIL.usd;
+  }
+
+
+  // Array
+
+  if (Array.isArray(data)) {
+
+    const brent = data.find(item => {
+
+      const symbol =
+        String(
+          item?.symbol || ''
+        ).toUpperCase();
+
+      const name =
+        String(
+          item?.name || ''
+        ).toLowerCase();
+
+      return (
+        symbol === 'BRENTOIL' ||
+        name.includes('crude oil brent') ||
+        name.includes('brent')
+      );
+
+    });
+
+
+    if (brent) {
+
+      if (
+        typeof brent.price === 'number'
+      ) {
+        return brent.price;
+      }
+
+      if (
+        typeof brent.current_price === 'number'
+      ) {
+        return brent.current_price;
+      }
+
+      if (
+        typeof brent.usd === 'number'
+      ) {
+        return brent.usd;
+      }
+
+    }
+
+  }
+
+
+  return null;
+}
+
+
+// ======================================================
+// Create card
 // ======================================================
 
 function createMarketCard(
@@ -387,28 +345,18 @@ function createMarketCard(
     'crypto-card';
 
 
-  if (
+  const displayValue =
     typeof value === 'number' &&
     Number.isFinite(value)
-  ) {
+      ? `$${Math.round(value).toLocaleString('en-US')}`
+      : '--';
 
-    card.innerHTML = `
-      <h3>${name}</h3>
-      <p>
-        $${Math.round(value).toLocaleString('en-US')}
-      </p>
-      <small>${ticker}</small>
-    `;
 
-  } else {
-
-    card.innerHTML = `
-      <h3>${name}</h3>
-      <p>--</p>
-      <small>${ticker}</small>
-    `;
-
-  }
+  card.innerHTML = `
+    <h3>${name}</h3>
+    <p>${displayValue}</p>
+    <small>${ticker}</small>
+  `;
 
 
   return card;
@@ -416,10 +364,10 @@ function createMarketCard(
 
 
 // ======================================================
-// Fetch Market Data
+// Render cards
 // ======================================================
 
-async function fetchMarketData() {
+function renderMarketCards(values) {
 
   const container =
     document.getElementById('crypto-prices');
@@ -435,13 +383,50 @@ async function fetchMarketData() {
   }
 
 
+  container.innerHTML = '';
+
+
+  ASSETS.forEach(asset => {
+
+    const value =
+      values[asset.ticker];
+
+
+    container.appendChild(
+      createMarketCard(
+        asset.name,
+        asset.ticker,
+        value
+      )
+    );
+
+  });
+
+}
+
+
+// ======================================================
+// Fetch Market Data
+// ======================================================
+
+async function fetchMarketData() {
+
   console.log(
-    '📊 Starting CoinGecko market update...'
+    '📊 Starting BlackBitSwan market update...'
   );
 
 
+  const values = {
+    BTC: null,
+    NVDAX: null,
+    MUX: null,
+    GOOGLX: null,
+    AMZNX: null
+  };
+
+
   // ----------------------------------------------------
-  // 1. Get Brent independently
+  // Get Brent
   // ----------------------------------------------------
 
   let brentPrice = null;
@@ -449,18 +434,8 @@ async function fetchMarketData() {
 
   try {
 
-    const brentId =
-      await findBrentId();
-
-
     brentPrice =
-      await getPrice(brentId);
-
-
-    console.log(
-      '🛢 Brent price:',
-      brentPrice
-    );
+      await fetchBrentPrice();
 
   } catch (error) {
 
@@ -473,7 +448,7 @@ async function fetchMarketData() {
 
 
   // ----------------------------------------------------
-  // 2. Calculate K
+  // Calculate K
   // ----------------------------------------------------
 
   let K = null;
@@ -489,7 +464,7 @@ async function fetchMarketData() {
 
 
     console.log(
-      'K calculated:',
+      'K:',
       K
     );
 
@@ -497,109 +472,77 @@ async function fetchMarketData() {
 
 
   // ----------------------------------------------------
-  // 3. Fetch five assets independently
+  // Get five assets
   // ----------------------------------------------------
 
-  const pricePromises =
-    ASSETS.map(async asset => {
-
-      try {
-
-        let price;
+  let prices = {};
 
 
-        // Bitcoin
-        if (asset.type === 'bitcoin') {
+  try {
 
-          price =
-            await getBitcoinPrice();
+    prices =
+      await fetchAssetPrices();
 
-        }
+  } catch (error) {
 
+    console.error(
+      '❌ CoinGecko asset error:',
+      error
+    );
 
-        // Tokenized stock
-        else {
-
-          const id =
-            await findTokenizedStockId(
-              asset.ticker
-            );
-
-
-          price =
-            await getPrice(id);
-
-        }
-
-
-        return {
-          asset,
-          price,
-          success: true
-        };
-
-
-      } catch (error) {
-
-        console.error(
-          `❌ ${asset.ticker}:`,
-          error
-        );
-
-
-        return {
-          asset,
-          price: null,
-          success: false
-        };
-
-      }
-
-    });
-
-
-  const results =
-    await Promise.all(pricePromises);
+  }
 
 
   // ----------------------------------------------------
-  // 4. Render
+  // Calculate adjusted values
   // ----------------------------------------------------
 
-  container.innerHTML = '';
+  ASSETS.forEach(asset => {
 
-
-  results.forEach(result => {
-
-    let adjustedValue = null;
+    const raw =
+      prices?.[asset.id]?.usd;
 
 
     if (
-      result.success &&
-      typeof result.price === 'number' &&
+      typeof raw === 'number' &&
+      Number.isFinite(raw) &&
+      raw > 0 &&
       typeof K === 'number'
     ) {
 
-      adjustedValue =
-        result.price * K;
+      values[asset.ticker] =
+        raw * K;
+
+
+      console.log(
+        `${asset.ticker}:`,
+        raw,
+        '→',
+        values[asset.ticker]
+      );
+
+    } else {
+
+      console.warn(
+        `⚠️ No adjusted value for ${asset.ticker}`
+      );
 
     }
-
-
-    container.appendChild(
-      createMarketCard(
-        result.asset.name,
-        result.asset.ticker,
-        adjustedValue
-      )
-    );
 
   });
 
 
+  // ----------------------------------------------------
+  // Render
+  // ----------------------------------------------------
+
+  renderMarketCards(values);
+
+
   console.log(
-    '✅ Market update completed'
+    '✅ BlackBitSwan market update completed'
   );
+
 }
 
 
@@ -608,7 +551,6 @@ async function fetchMarketData() {
 // ======================================================
 
 fetchMood();
-
 fetchMarketData();
 
 
@@ -625,4 +567,3 @@ setInterval(
   fetchMarketData,
   5 * 60 * 1000
 );
-```
