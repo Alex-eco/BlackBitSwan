@@ -1,7 +1,9 @@
 // ================== API base URL ==================
 const API_BASE = 'https://blackbitswan.onrender.com';
 
+
 // ================== Market Mood ==================
+
 const moodElement = document.getElementById('mood-value');
 
 async function fetchMood() {
@@ -17,9 +19,9 @@ async function fetchMood() {
     if (data && typeof data.mood_percent === 'number') {
       moodElement.textContent = `${Math.round(data.mood_percent)}%`;
     } else {
-      console.warn('⚠️ Mood value not found');
       moodElement.textContent = '--%';
     }
+
   } catch (error) {
     console.error('❌ Error fetching market mood:', error);
     moodElement.textContent = '--%';
@@ -27,23 +29,24 @@ async function fetchMood() {
 }
 
 
-// ================== Market Prices ==================
+// ================== Market Assets ==================
+//
+// BTC     → CoinGecko
+// Stocks  → Yahoo Finance
+// Brent   → Yahoo Finance BZ=F
+//
+// BlackBitSwan calculation:
+//
+// K = 80 / Brent
+//
+// BlackBitSwan Value = Current Price × K
+//
+// Brent and K are NOT displayed.
+// All final values are rounded to integers.
+//
 
-// Free public sources:
-//
-// BTC:
-// CoinGecko
-//
-// Stocks:
-// QuantEngines public market-data API
-//
-// Brent:
-// Croncopia public commodity API
-//
-// No API keys required.
 
-const COINGECKO_URL =
-  'https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd';
+// ================== Asset configuration ==================
 
 const STOCKS = [
   {
@@ -64,275 +67,338 @@ const STOCKS = [
   }
 ];
 
-const STOCK_API_BASE =
-  'https://quantengines.com/api/v1/market-data/public/quote';
 
-const BRENT_URL =
-  'https://croncopia.com/api/energy/brent_crude.json';
+// ================== Yahoo Finance ==================
 
+async function fetchYahooPrice(symbol) {
 
-// ================== Fetch BTC ==================
+  const url =
+    `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?range=1d&interval=1m`;
 
-async function fetchBitcoin() {
-  const response = await fetch(COINGECKO_URL);
+  const response = await fetch(url);
 
   if (!response.ok) {
-    throw new Error(`Bitcoin API error: ${response.status}`);
+    throw new Error(
+      `${symbol}: Yahoo Finance error ${response.status}`
+    );
   }
 
   const data = await response.json();
+
+  const meta =
+    data?.chart?.result?.[0]?.meta;
+
+  if (!meta) {
+    throw new Error(
+      `${symbol}: Yahoo Finance returned no data`
+    );
+  }
+
+  // regularMarketPrice is preferable because
+  // it remains available when the market is closed.
+
+  const price =
+    typeof meta.regularMarketPrice === 'number'
+      ? meta.regularMarketPrice
+      : meta.previousClose;
 
   if (
-    !data ||
-    !data.bitcoin ||
-    typeof data.bitcoin.usd !== 'number'
+    typeof price !== 'number' ||
+    !Number.isFinite(price) ||
+    price <= 0
   ) {
-    throw new Error('Bitcoin price not found');
+    throw new Error(
+      `${symbol}: invalid price`
+    );
   }
 
-  return data.bitcoin.usd;
+  return price;
 }
 
 
-// ================== Fetch Stock ==================
+// ================== Bitcoin ==================
 
-async function fetchStock(symbol) {
-  const response = await fetch(
-    `${STOCK_API_BASE}/${encodeURIComponent(symbol)}`
+async function fetchBitcoinPrice() {
+
+  const url =
+    'https://api.coingecko.com/api/v3/simple/price' +
+    '?ids=bitcoin&vs_currencies=usd';
+
+  const response = await fetch(url);
+
+  if (!response.ok) {
+    throw new Error(
+      `Bitcoin API error: ${response.status}`
+    );
+  }
+
+  const data = await response.json();
+
+  const price =
+    data?.bitcoin?.usd;
+
+  if (
+    typeof price !== 'number' ||
+    !Number.isFinite(price) ||
+    price <= 0
+  ) {
+    throw new Error(
+      'Bitcoin price not found'
+    );
+  }
+
+  return price;
+}
+
+
+// ================== Brent ==================
+
+async function fetchBrentPrice() {
+
+  // BZ=F = Brent Crude Oil futures
+  const price =
+    await fetchYahooPrice('BZ=F');
+
+  if (
+    typeof price !== 'number' ||
+    !Number.isFinite(price) ||
+    price <= 0
+  ) {
+    throw new Error(
+      'Invalid Brent price'
+    );
+  }
+
+  return price;
+}
+
+
+// ================== Formatting ==================
+
+function formatInteger(value) {
+
+  return Math.round(value).toLocaleString(
+    'en-US'
   );
-
-  if (!response.ok) {
-    throw new Error(
-      `${symbol} API error: ${response.status}`
-    );
-  }
-
-  const data = await response.json();
-
-  if (!data || typeof data.price !== 'number') {
-    throw new Error(
-      `${symbol} price not found`
-    );
-  }
-
-  return data.price;
 }
 
 
-// ================== Fetch Brent ==================
+// ================== Create Card ==================
 
-async function fetchBrent() {
-  const response = await fetch(BRENT_URL);
+function createMarketCard(
+  name,
+  symbol,
+  value
+) {
 
-  if (!response.ok) {
-    throw new Error(
-      `Brent API error: ${response.status}`
-    );
-  }
+  const card =
+    document.createElement('div');
 
-  const data = await response.json();
-
-  if (!data || typeof data.price !== 'number') {
-    throw new Error('Brent price not found');
-  }
-
-  return data.price;
-}
-
-
-// ================== Create Market Card ==================
-
-function createMarketCard(name, symbol, adjustedValue) {
-  const card = document.createElement('div');
-
-  card.className = 'crypto-card';
+  card.className =
+    'crypto-card';
 
   card.innerHTML = `
     <h3>${name}</h3>
-    <p>$${Math.round(adjustedValue).toLocaleString('en-US')}</p>
-    <p>${symbol}</p>
+
+    <p>
+      $${formatInteger(value)}
+    </p>
+
+    <p>
+      ${symbol}
+    </p>
   `;
 
   return card;
 }
 
 
-// ================== Fetch All Market Values ==================
+// ================== Fetch Market Values ==================
 
 async function fetchPrices() {
+
   const container =
-    document.getElementById('crypto-prices');
+    document.getElementById(
+      'crypto-prices'
+    );
 
   if (!container) {
     console.error(
-      '❌ Element #crypto-prices not found'
+      '❌ #crypto-prices element not found'
     );
     return;
   }
 
   try {
-    // Fetch Brent first because K depends on Brent
-    const brentPrice = await fetchBrent();
 
-    if (!Number.isFinite(brentPrice) || brentPrice <= 0) {
-      throw new Error(
-        'Invalid Brent price'
-      );
-    }
+    // ------------------------------------------
+    // 1. Get current Brent
+    // ------------------------------------------
 
-    // ==============================
-    // BlackBitSwan coefficient
-    // K = 80 / Brent
-    // ==============================
+    const brent =
+      await fetchBrentPrice();
 
-    const K = 80 / brentPrice;
+
+    // ------------------------------------------
+    // 2. Calculate BlackBitSwan coefficient
+    // ------------------------------------------
+
+    const K =
+      80 / brent;
+
 
     console.log(
-      `🛢️ Brent: $${brentPrice}`
+      `Brent: ${brent}`
     );
 
     console.log(
-      `📐 BlackBitSwan K: ${K}`
+      `BlackBitSwan K: ${K}`
     );
 
 
-    // ==============================
-    // Fetch BTC + stocks in parallel
-    // ==============================
+    // ------------------------------------------
+    // 3. Get BTC + stocks simultaneously
+    // ------------------------------------------
 
-    const results = await Promise.allSettled([
-      fetchBitcoin(),
+    const results =
+      await Promise.allSettled([
 
-      ...STOCKS.map(stock =>
-        fetchStock(stock.symbol)
-      )
-    ]);
+        fetchBitcoinPrice(),
+
+        ...STOCKS.map(
+          stock =>
+            fetchYahooPrice(stock.symbol)
+        )
+
+      ]);
 
 
-    // ==============================
-    // Clear previous cards
-    // ==============================
+    // ------------------------------------------
+    // 4. Clear old values
+    // ------------------------------------------
 
     container.innerHTML = '';
 
 
-    // ==============================
-    // BTC
-    // ==============================
+    // ------------------------------------------
+    // 5. Bitcoin
+    // ------------------------------------------
 
-    const btcResult = results[0];
+    const btcResult =
+      results[0];
 
-    if (btcResult.status === 'fulfilled') {
-      const btcPrice = btcResult.value;
+    if (
+      btcResult.status === 'fulfilled'
+    ) {
 
-      // BlackBitSwan adjusted value
-      const adjustedBTC =
+      const btcPrice =
+        btcResult.value;
+
+      const btcValue =
         btcPrice * K;
 
       container.appendChild(
         createMarketCard(
           'Bitcoin',
           'BTC',
-          adjustedBTC
+          btcValue
         )
       );
 
       console.log(
-        `₿ BTC: ${btcPrice} → ${adjustedBTC}`
+        `BTC ${btcPrice} → ${btcValue}`
       );
 
     } else {
+
       console.error(
-        '❌ BTC error:',
+        '❌ BTC:',
         btcResult.reason
       );
 
-      container.appendChild(
-        createMarketCard(
-          'Bitcoin',
-          'BTC',
-          0
-        )
-      );
+      const card =
+        document.createElement('div');
+
+      card.className =
+        'crypto-card';
+
+      card.innerHTML = `
+        <h3>Bitcoin</h3>
+        <p>--</p>
+        <p>BTC</p>
+      `;
+
+      container.appendChild(card);
     }
 
 
-    // ==============================
-    // Stocks
-    // ==============================
+    // ------------------------------------------
+    // 6. Stocks
+    // ------------------------------------------
 
-    STOCKS.forEach((stock, index) => {
+    STOCKS.forEach(
+      (stock, index) => {
 
-      const result = results[index + 1];
-
-      if (result.status === 'fulfilled') {
-
-        const currentPrice =
-          result.value;
-
-        // BlackBitSwan adjusted value
-        const adjustedValue =
-          currentPrice * K;
-
-        container.appendChild(
-          createMarketCard(
-            stock.name,
-            stock.symbol,
-            adjustedValue
-          )
-        );
-
-        console.log(
-          `📈 ${stock.symbol}: ${currentPrice} → ${adjustedValue}`
-        );
-
-      } else {
-
-        console.error(
-          `❌ ${stock.symbol} error:`,
-          result.reason
-        );
+        const result =
+          results[index + 1];
 
         const card =
           document.createElement('div');
 
-        card.className = 'crypto-card';
+        card.className =
+          'crypto-card';
 
-        card.innerHTML = `
-          <h3>${stock.name}</h3>
-          <p>--</p>
-          <p>${stock.symbol}</p>
-        `;
+
+        if (
+          result.status === 'fulfilled'
+        ) {
+
+          const currentPrice =
+            result.value;
+
+          const adjustedValue =
+            currentPrice * K;
+
+          card.innerHTML = `
+            <h3>${stock.name}</h3>
+
+            <p>
+              $${formatInteger(adjustedValue)}
+            </p>
+
+            <p>
+              ${stock.symbol}
+            </p>
+          `;
+
+          console.log(
+            `${stock.symbol} ${currentPrice} → ${adjustedValue}`
+          );
+
+        } else {
+
+          console.error(
+            `❌ ${stock.symbol}:`,
+            result.reason
+          );
+
+          card.innerHTML = `
+            <h3>${stock.name}</h3>
+            <p>--</p>
+            <p>${stock.symbol}</p>
+          `;
+        }
+
 
         container.appendChild(card);
       }
-    });
-
-
-    // ==============================
-    // Brent + K information
-    // ==============================
-
-    const info = document.createElement('div');
-
-    info.className = 'market-info';
-
-    info.innerHTML = `
-      <p>
-        Brent: $${Math.round(brentPrice).toLocaleString('en-US')}
-      </p>
-      <p>
-        K: ${K.toFixed(4)}
-      </p>
-    `;
-
-    container.appendChild(info);
+    );
 
 
   } catch (error) {
 
     console.error(
-      '❌ Failed to fetch market prices:',
+      '❌ Market data error:',
       error
     );
 
@@ -340,7 +406,6 @@ async function fetchPrices() {
       <div class="crypto-card">
         <h3>Market Data</h3>
         <p>Temporarily unavailable</p>
-        <p>Please try again later</p>
       </div>
     `;
   }
@@ -355,13 +420,13 @@ fetchPrices();
 
 // ================== Auto Refresh ==================
 
-// Market Mood: every 5 minutes
+// Market Mood — every 5 minutes
 setInterval(
   fetchMood,
   5 * 60 * 1000
 );
 
-// Market prices: every 5 minutes
+// Market Values — every 5 minutes
 setInterval(
   fetchPrices,
   5 * 60 * 1000
