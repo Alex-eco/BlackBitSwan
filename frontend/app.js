@@ -273,3 +273,13 @@ setInterval(
   fetchMarketData,
   5 * 60 * 1000
 );
+
+function toggleFounding() {
+  const block = document.getElementById('founding-membership');
+
+  if (!block) {
+    return;
+  }
+
+  block.classList.toggle('show');
+}
