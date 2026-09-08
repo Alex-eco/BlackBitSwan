@@ -159,3 +159,11 @@ footer {
   font-family: monospace;
   font-size: 0.9rem;
 }
+.report-section a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.report-section a:hover {
+  text-decoration: underline;
+}
