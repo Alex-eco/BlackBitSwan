@@ -46,11 +46,7 @@ async function handle(line) {
   if (req.method === "describe") return response(req.id, MANIFEST);
   if (req.method === "health") return response(req.id, { status: "healthy", version: MANIFEST.version });
 
-  if (req.method === "invoke") {
-    const tool = req.params?.tool;
-    if (tool !== "market_risk") {
-      return response(req.id, undefined, { code: -32601, message: "Unknown tool: " + tool });
-    }
+  if (req.method === "market_risk") {
     try {
       return response(req.id, await marketRisk());
     } catch (e) {
