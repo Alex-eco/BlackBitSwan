@@ -1,0 +1,15 @@
+{
+  "slug": "blackbitswan-eai",
+  "name": "Blackbitswan eAI",
+  "version": "0.1.0",
+  "tagline": "Emotional AI risk intelligence for crypto markets.",
+  "description": "Blackbitswan eAI analyzes crypto market mood and risk signals to help users detect panic, sentiment shifts and emerging market stress.",
+  "category": "data",
+  "homepage_url": "https://black-bit-swan.vercel.app",
+  "support_url": "https://t.me/blackbitswan",
+  "bundled_executas": {
+    "market-risk": {
+      "path": "./executas/market-risk"
+    }
+  }
+}
