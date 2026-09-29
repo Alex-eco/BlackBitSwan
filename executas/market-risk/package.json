@@ -1,0 +1,17 @@
+{
+  "name": "tool-test-blackbitswan-market-risk-12345678",
+  "version": "0.1.0",
+  "private": true,
+  "type": "commonjs",
+  "engines": { "node": ">=18.0.0" },
+  "bin": {
+    "tool-test-blackbitswan-market-risk-12345678": "market_risk_plugin.js"
+  },
+  "main": "market_risk_plugin.js",
+  "scripts": {
+    "start": "node market_risk_plugin.js"
+  },
+  "executa": {
+    "tool_id": "tool-test-blackbitswan-market-risk-12345678"
+  }
+}
