@@ -16,8 +16,8 @@ async function scan() {
   try {
     const result = await anna.tools.invoke({
       tool_id: TOOL_ID,
-      method: "invoke",
-      args: { tool: "market_risk", arguments: {} }
+      method: "market_risk",
+      args: {}
     });
     const data = result?.data || result;
     moodEl.textContent = Number(data.mood_percent).toFixed(0) + "%";
