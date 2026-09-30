@@ -32,7 +32,7 @@
       }
     ],
     "host_api": {
-      "tools": ["required:*"],
+      "tools": ["required:bundled:market-risk"],
       "chat": ["write_message"],
       "artifact": [],
       "llm": [],
