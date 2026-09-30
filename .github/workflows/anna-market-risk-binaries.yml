@@ -1,0 +1,129 @@
+name: Build Anna Market Risk Binaries
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Executa version"
+        required: true
+        default: "0.1.1"
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build ${{ matrix.platform }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: darwin-arm64
+            runner: macos-14
+            target: node18-macos-arm64
+            binary: blackbitswan-market-risk
+            archive: tar.gz
+          - platform: darwin-x86_64
+            runner: macos-13
+            target: node18-macos-x64
+            binary: blackbitswan-market-risk
+            archive: tar.gz
+          - platform: linux-x86_64
+            runner: ubuntu-22.04
+            target: node18-linux-x64
+            binary: blackbitswan-market-risk
+            archive: tar.gz
+          - platform: windows-x86_64
+            runner: windows-2022
+            target: node18-win-x64
+            binary: blackbitswan-market-risk.exe
+            archive: zip
+
+    runs-on: ${{ matrix.runner }}
+
+    defaults:
+      run:
+        working-directory: executas/market-risk
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Build standalone Executa
+        shell: bash
+        run: |
+          mkdir -p dist
+          npx --yes pkg@5.8.1 market_risk_plugin.js --target ${{ matrix.target }} --output "dist/${{ matrix.binary }}"
+
+      - name: Test binary protocol
+        shell: bash
+        run: |
+          if [ "${{ matrix.platform }}" = "windows-x86_64" ]; then
+            printf '%s\n' '{"jsonrpc":"2.0","method":"describe","id":1}' | ./dist/${{ matrix.binary }} > describe.json
+          else
+            chmod +x ./dist/${{ matrix.binary }}
+            printf '%s\n' '{"jsonrpc":"2.0","method":"describe","id":1}' | ./dist/${{ matrix.binary }} > describe.json
+          fi
+          node -e "const fs=require('fs'); const r=JSON.parse(fs.readFileSync('describe.json','utf8')); if(!r.result || r.result.display_name!=='Blackbitswan Market Risk') process.exit(1)"
+
+      - name: Package Unix archive
+        if: matrix.archive == 'tar.gz'
+        shell: bash
+        run: |
+          mkdir -p package
+          cp "dist/${{ matrix.binary }}" package/${{ matrix.binary }}
+          tar -C package -czf "dist/blackbitswan-market-risk-${{ inputs.version }}-${{ matrix.platform }}.tar.gz" ${{ matrix.binary }}
+          sha256sum "dist/blackbitswan-market-risk-${{ inputs.version }}-${{ matrix.platform }}.tar.gz" > "dist/blackbitswan-market-risk-${{ inputs.version }}-${{ matrix.platform }}.tar.gz.sha256"
+
+      - name: Package Windows archive
+        if: matrix.archive == 'zip'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force package | Out-Null
+          Copy-Item "dist/${{ matrix.binary }}" "package/${{ matrix.binary }}"
+          Compress-Archive -Path "package/${{ matrix.binary }}" -DestinationPath "dist/blackbitswan-market-risk-${{ inputs.version }}-${{ matrix.platform }}.zip" -Force
+          (Get-FileHash "dist/blackbitswan-market-risk-${{ inputs.version }}-${{ matrix.platform }}.zip" -Algorithm SHA256).Hash.ToLower() + "  blackbitswan-market-risk-${{ inputs.version }}-${{ matrix.platform }}.zip" | Out-File "dist/blackbitswan-market-risk-${{ inputs.version }}-${{ matrix.platform }}.zip.sha256" -Encoding ascii
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: blackbitswan-market-risk-${{ inputs.version }}-${{ matrix.platform }}
+          path: |
+            executas/market-risk/dist/blackbitswan-market-risk-${{ inputs.version }}-${{ matrix.platform }}.*
+            !executas/market-risk/dist/blackbitswan-market-risk-${{ inputs.version }}-${{ matrix.platform }}-*
+          if-no-files-found: error
+
+  release:
+    name: Publish GitHub Release
+    needs: build
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Download all build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release-assets
+          pattern: blackbitswan-market-risk-${{ inputs.version }}-*
+          merge-multiple: true
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: blackbitswan-market-risk-v${{ inputs.version }}
+          name: Blackbitswan Market Risk v${{ inputs.version }}
+          generate_release_notes: true
+          files: |
+            release-assets/blackbitswan-market-risk-${{ inputs.version }}-darwin-arm64.tar.gz
+            release-assets/blackbitswan-market-risk-${{ inputs.version }}-darwin-arm64.tar.gz.sha256
+            release-assets/blackbitswan-market-risk-${{ inputs.version }}-darwin-x86_64.tar.gz
+            release-assets/blackbitswan-market-risk-${{ inputs.version }}-darwin-x86_64.tar.gz.sha256
+            release-assets/blackbitswan-market-risk-${{ inputs.version }}-linux-x86_64.tar.gz
+            release-assets/blackbitswan-market-risk-${{ inputs.version }}-linux-x86_64.tar.gz.sha256
+            release-assets/blackbitswan-market-risk-${{ inputs.version }}-windows-x86_64.zip
+            release-assets/blackbitswan-market-risk-${{ inputs.version }}-windows-x86_64.zip.sha256
