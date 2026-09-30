@@ -1,7 +1,11 @@
 import { AnnaAppRuntime } from "/static/anna-apps/_sdk/latest/index.js";
 
-const TOOL_FALLBACK = "tool-test-blackbitswan-market-risk-12345678";
-const TOOL_ID = (typeof window !== "undefined" && window.__ANNA_TOOL_IDS__ && window.__ANNA_TOOL_IDS__["market-risk"]) || TOOL_FALLBACK;
+const EXECUTA_HANDLE = "market-risk";
+const DEV_FALLBACK_TOOL_ID = "tool-test-blackbitswan-market-risk-12345678";
+
+const TOOL_ID =
+  window.__ANNA_TOOL_IDS__?.[EXECUTA_HANDLE] ||
+  DEV_FALLBACK_TOOL_ID;
 
 const moodEl = document.getElementById("mood");
 const interpretationEl = document.getElementById("interpretation");
