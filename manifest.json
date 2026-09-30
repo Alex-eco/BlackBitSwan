@@ -45,7 +45,7 @@
       "connect-src": ["'self'", "https://blackbitswan.onrender.com"],
       "img-src": ["'self'", "data:", "blob:"],
       "font-src": ["'self'", "data:"],
-      "style-src": ["'self'", "'unsafe-inline'"],
+      "style-src": ["'self'"],
       "script-src": ["'self'"]
     }
   }
