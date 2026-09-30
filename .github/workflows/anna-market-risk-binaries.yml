@@ -85,7 +85,11 @@ jobs:
           mkdir -p package
           cp "dist/${{ matrix.binary }}" package/${{ matrix.binary }}
           tar -C package -czf "dist/blackbitswan-market-risk-${{ env.EXECUTA_VERSION }}-${{ matrix.platform }}.tar.gz" ${{ matrix.binary }}
-          sha256sum "dist/blackbitswan-market-risk-${{ env.EXECUTA_VERSION }}-${{ matrix.platform }}.tar.gz" > "dist/blackbitswan-market-risk-${{ env.EXECUTA_VERSION }}-${{ matrix.platform }}.tar.gz.sha256"
+          if command -v sha256sum >/dev/null 2>&1; then
+            sha256sum "dist/blackbitswan-market-risk-${{ env.EXECUTA_VERSION }}-${{ matrix.platform }}.tar.gz" > "dist/blackbitswan-market-risk-${{ env.EXECUTA_VERSION }}-${{ matrix.platform }}.tar.gz.sha256"
+          else
+            shasum -a 256 "dist/blackbitswan-market-risk-${{ env.EXECUTA_VERSION }}-${{ matrix.platform }}.tar.gz" > "dist/blackbitswan-market-risk-${{ env.EXECUTA_VERSION }}-${{ matrix.platform }}.tar.gz.sha256"
+          fi
 
       - name: Package Windows archive
         if: matrix.archive == 'zip'
