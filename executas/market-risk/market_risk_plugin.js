@@ -5,7 +5,7 @@ const BACKEND = "https://blackbitswan.onrender.com";
 
 const MANIFEST = {
   display_name: "Blackbitswan Market Risk",
-  version: "0.1.0",
+  version: "0.1.1",
   description: "Retrieves the current Blackbitswan market mood and risk signal.",
   tools: [
     {
