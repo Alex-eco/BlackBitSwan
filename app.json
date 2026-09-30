@@ -1,0 +1,15 @@
+{
+  "slug": "blackbitswan-eai",
+  "name": "Blackbitswan eAI",
+  "version": "0.1.1",
+  "tagline": "Emotional AI risk intelligence for crypto markets.",
+  "description": "Blackbitswan eAI is an AI-powered crypto market risk intelligence app for traders and investors. It scans current market mood and risk signals to surface panic, sentiment extremes, market stress and changing market psychology. The main risk scan runs through a bundled Anna Executa connected to the Blackbitswan backend and returns a compact, actionable market-risk signal. It is designed for users who want a fast analytical view of crypto market conditions without treating the output as personalized financial advice or a guaranteed prediction.",
+  "category": "data",
+  "homepage_url": "https://black-bit-swan.vercel.app",
+  "support_url": "https://t.me/blackbitswan",
+  "bundled_executas": {
+    "market-risk": {
+      "path": "./executas/market-risk"
+    }
+  }
+}
