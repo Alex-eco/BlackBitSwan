@@ -104,10 +104,28 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: blackbitswan-market-risk-${{ env.EXECUTA_VERSION }}-${{ matrix.platform }}
-          path: |
-            executas/market-risk/dist/blackbitswan-market-risk-${{ env.EXECUTA_VERSION }}-${{ matrix.platform }}.*
-            !executas/market-risk/dist/blackbitswan-market-risk-${{ env.EXECUTA_VERSION }}-${{ matrix.platform }}-*
+          path: executas/market-risk/dist/blackbitswan-market-risk-${{ env.EXECUTA_VERSION }}-${{ matrix.platform }}.*
           if-no-files-found: error
+
+  validate:
+    name: Anna strict validation
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install Anna CLI
+        shell: bash
+        run: npm install --global @anna-ai/cli@0.1.56
+
+      - name: Validate Anna App (strict)
+        shell: bash
+        run: anna-app validate --strict
 
   release:
     if: github.event_name == 'workflow_dispatch'
